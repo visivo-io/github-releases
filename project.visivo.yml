@@ -1,0 +1,40 @@
+path: project
+name: github-releases
+
+defaults:
+  source_name: Example Source
+
+includes: 
+  - path: traces.visivo.yml
+  - path: charts.visivo.yml
+
+destinations: []
+alerts: []
+
+sources:
+  - name: Example Source
+    database: local.db
+    type: duckdb
+    connection_pool_size: 1
+
+models: 
+  - name: releases
+    args:
+      - python
+      - seed-github-data.py
+traces: []
+tables: []
+charts: []
+selectors: []
+dashboards:
+  - name: Repository Releases
+    rows:
+      - height: compact
+        items: 
+          - markdown: |
+              # {{ env_var('REPO_NAME')}}
+              by {{env_var('REPO_COMPANY')}} [(github)](https://github.com/{{env_var('REPO_COMPANY')}}/{{ env_var('REPO_NAME')}}/releases)
+            align: center 
+      - height: medium
+        items:
+          - chart: ${ref(releases_over_time)}

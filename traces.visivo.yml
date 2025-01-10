@@ -1,0 +1,10 @@
+traces:
+  - name: releases_per_quarter
+    model: ${ref(releases)}
+    props:
+      type: bar 
+      x: query(date_trunc('quarter', created_at::timestamp)::varchar)
+      y: query( count(*) )
+    order_by: 
+      - query(date_trunc('quarter', created_at::timestamp) asc )
+    
