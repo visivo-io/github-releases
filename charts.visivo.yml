@@ -1,8 +1,71 @@
-charts: 
+charts:
   - name: releases_over_time 
+    selector: 
+      name: date-grain
+      type: single
     traces: 
       - ${ref(releases_per_quarter)}
+      - ${ref(releases_per_week)}
+      - ${ref(releases_per_month)}
+      - ${ref(releases_per_year)}
     layout: 
       title: 
-        text: "Releases Over Time"
-      
+        text: "All Releases All Time"
+  
+  - name: releases_all_time_big_number_chart
+    traces:
+      - ${ref(releases_all_time_big_number_trace)}
+    layout: 
+      title:
+        text: Releases All Time
+
+  - name: reactions_per_release_chart
+    traces:
+      - ${ref(reaction_per_release_trace)}
+    layout: 
+      title:
+        text: Reactions Per Release
+  
+  - name: mentions_per_release_chart
+    traces:
+      - ${ref(mentions_per_release_trace)}
+    layout: 
+      title:
+        text: Mentions Per Release
+
+  - name: body_length_chart
+    traces:
+      - ${ref(body_length_per_release_trace)}
+    layout: 
+      title:
+        text: Avgerage Release<br>Message Characters
+  
+  - name: current_version_chart
+    traces:
+      - ${ref(current_version_trace)}
+    layout:
+      title:
+        text: Current Version
+      margin: 
+        l: 40 
+        r: 40 
+  
+  - name: major_releases_per_year_chart 
+    traces:
+      - ${ref(major_releases_per_year_trace)}
+    layout: 
+      title:
+        text: Major Releases
+      xaxis: 
+        tickvals: ['2020', '2021', '2022', '2023', '2024', '2025']
+        ticktext: ['2020', '2021', '2022', '2023', '2024', '2025']
+        tickmode: array
+        type: category
+        
+  - name: minor_releases_per_year_chart 
+    traces:
+      - ${ref(minor_releases_per_year_trace)}
+    layout: 
+      title:
+        text: Minor Releases
+  

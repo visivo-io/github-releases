@@ -49,6 +49,8 @@ def flatten_dict(d, parent_key=''):
         new_key = f"{parent_key}_{k}" if parent_key else k
 
         if isinstance(v, dict):
+            # Keep original value regardless of type
+            items[new_key] = v
             # Recursively flatten nested dictionaries
             items.update(flatten_dict(v, new_key))
         elif isinstance(v, list):

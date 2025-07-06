@@ -22,6 +22,97 @@ models:
     args:
       - python
       - seed-github-data.py
+  - name: releases_augmented
+    models:
+      - ${ref(releases)} 
+    sql: |
+      with 
+      base as (
+      SELECT 
+        *,
+        m.created_at::timestamp as timestamp_created_at, 
+        m.tag_name,
+        CASE 
+                WHEN regexp_matches(tag_name, '(rc|a|b)\d*$') THEN regexp_extract(tag_name, '(rc|a|b)\d*$')
+                ELSE NULL 
+          END as prerelease_status, 
+          replace(
+            replace(m.tag_name, 'v', ''), 
+            coalesce(regexp_extract(tag_name, '(rc|a|b)\d*$'), ''),
+            ''
+          )  as cleaned_releases,
+          try_cast(string_split(cleaned_releases, '.')[1] as int) as major_version, 
+          try_cast(string_split(cleaned_releases, '.')[2] as int) as minor_version,
+          try_cast(string_split(cleaned_releases, '.')[3] as int) as patch_version,
+          
+          lag(prerelease_status) OVER(
+            PARTITION BY major_version, minor_version, patch_version
+            ORDER BY created_at::timestamp
+        ) as previous_prerelease_status,
+          
+          lag(major_version) OVER( 
+            ORDER BY created_at::timestamp
+          ) as previous_major_version,
+          lag(
+            CASE 
+              WHEN prerelease_status is null 
+                then major_version 
+              else null 
+          end IGNORE NULLS
+            ) OVER( 
+            ORDER BY created_at::timestamp
+          ) as last_non_prerelease_major_version,
+          
+          lag(minor_version) OVER(
+            PARTITION BY major_version
+            ORDER BY created_at::timestamp
+          ) as previous_minor_version,
+          lag(
+            CASE 
+              WHEN prerelease_status is null 
+                then minor_version 
+              else null 
+          end IGNORE NULLS
+            ) OVER( 
+              PARTITION BY major_version
+            ORDER BY created_at::timestamp
+          ) as last_non_prerelease_minor_version,
+          
+          lag(patch_version) OVER(
+            PARTITION BY major_version, minor_version
+            ORDER BY created_at::timestamp
+          ) as previous_patch_version,
+          lag(
+            CASE 
+              WHEN prerelease_status is null 
+                then patch_version 
+              else null 
+          end IGNORE NULLS
+            ) OVER( 
+              PARTITION BY major_version, minor_version
+            ORDER BY created_at::timestamp
+          ) as last_non_prerelease_patch_version,
+          
+          CASE 
+          WHEN prerelease_status is not null
+            THEN 'Pre-release'
+          WHEN major_version > last_non_prerelease_major_version
+            THEN 'Major Version'
+          WHEN minor_version > last_non_prerelease_minor_version 
+            THEN 'Minor Version'
+          WHEN patch_version > last_non_prerelease_patch_version 
+            THEN 'Patch Version'
+        -- WHEN prerelease_status null
+        -- 	THEN ''
+        END as release_type
+          
+              
+      FROM releases.model m 
+      )
+      sELECT 
+        *
+      FROM base	
+      order by timestamp_created_at asc 
 traces: []
 tables: []
 charts: []
@@ -35,6 +126,20 @@ dashboards:
               # {{ env_var('REPO_NAME')}}
               by {{env_var('REPO_COMPANY')}} [(github)](https://github.com/{{env_var('REPO_COMPANY')}}/{{ env_var('REPO_NAME')}}/releases)
             align: center 
+      - height: small 
+        items: 
+          - chart: ${ref(releases_all_time_big_number_chart)}
+          - chart: ${ref(reactions_per_release_chart)}
+          - chart: ${ref(current_version_chart)}
+          - chart: ${ref(body_length_chart)}
+          - chart: ${ref(mentions_per_release_chart)}
+      - height: medium 
+        items: 
+          - chart: ${ ref(major_releases_per_year_chart) }
+          - chart: ${ ref(minor_releases_per_year_chart) }
+          - markdown: Patch Releases per month 
+            align: center
+            justify: center 
       - height: medium
         items:
-          - chart: ${ref(releases_over_time)}
+          - chart: ${ ref(releases_over_time) }

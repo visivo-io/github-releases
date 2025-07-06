@@ -1,10 +1,77 @@
+#{% set date_grains = ['week', 'month', 'quarter', 'year'] %}
 traces:
-  - name: releases_per_quarter
+#{% for date_grain in date_grains %}
+  - name: releases_per_{{date_grain}}
     model: ${ref(releases)}
+    cohort_on: "'{{date_grain}}'"
     props:
       type: bar 
-      x: query(date_trunc('quarter', created_at::timestamp)::varchar)
+      x: query(date_trunc('{{date_grain}}', created_at::timestamp)::varchar)
       y: query( count(*) )
+      texttemplate: "%{y}"
+      textposition: inside
+      textangle: 0
     order_by: 
-      - query(date_trunc('quarter', created_at::timestamp) asc )
-    
+      - query(date_trunc('{{date_grain}}', created_at::timestamp) asc )
+#{% endfor %}    
+  - name: releases_all_time_big_number_trace
+    model: ${ref(releases)}
+    columns: 
+      releases: count(*)
+    props: 
+      type: indicator
+      value: column(releases)[0]
+  
+  - name: reaction_per_release_trace
+    model: ${ref(releases)}
+    columns: 
+      reactions: round(avg(reactions_total_count), 1)
+    props: 
+      type: indicator
+      value: column(reactions)[0]
+
+  - name: mentions_per_release_trace
+    model: ${ref(releases)}
+    columns: 
+      mentions: round(avg(mentions_count), 1)
+    props: 
+      type: indicator
+      value: column(mentions)[0]
+  
+  - name: body_length_per_release_trace
+    model: ${ref(releases)}
+    columns: 
+      body_length: round(avg(length(body)), 1)
+    props: 
+      type: indicator
+      value: column(body_length)[0]
+  
+  - name: current_version_trace
+    model: ${ref(releases)}
+    columns: 
+      last_digit: right(max_by(tag_name, created_at::timestamp ), 1)::int
+      version_string: left(max_by(tag_name, created_at::timestamp ), length(max_by(tag_name, created_at::timestamp )) - 1)
+    props: 
+      type: indicator
+      value: column(last_digit)[0]
+      number: 
+        prefix: column(version_string)[0]  
+  - name: major_releases_per_year_trace
+    model: ${ref(releases_augmented)}
+    props: 
+      type: bar
+      x: query( year(date_trunc('year', created_at::timestamp))::varchar )
+      y: query( count(*) )
+        
+    filters: 
+      - query( release_type = 'Major Version' )
+  
+  - name: minor_releases_per_year_trace
+    model: ${ref(releases_augmented)}
+    props: 
+      type: bar
+      x: query( date_trunc('quarter', created_at::timestamp)::varchar )
+      y: query( count(*) )
+        
+    filters: 
+      - query( release_type = 'Minor Version' )
